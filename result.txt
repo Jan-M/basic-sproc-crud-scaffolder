@@ -1,34 +1,52 @@
-CREATE TYPE parentType AS (
+CREATE TYPE Parent AS (
   id integer,
   name text,
-  first_name text
+  first_name text,
+  parent_data_id integer,
+  parent_data Parent_data
 );
 
 @DatabaseType
-class parentType {
+class Parent {
   @DatabaseField
   private Integer id;
   @DatabaseField
   private String name;
   @DatabaseField
   private String first_name;
-  public Integer getrentType() {
-      return rentType;
+  @DatabaseField
+  private Integer parent_data_id;
+@DatabaseField
+  private Parent_data parent_data;
+  public Integer getid() {
+      return id;
   }
-  public void setrentType(Integer aInteger) {
-      rentType = aInteger;
+  public void setid(Integer aInteger) {
+      id = aInteger;
   }
-  public String getrentType() {
-      return rentType;
+  public String getname() {
+      return name;
   }
-  public void setrentType(String aString) {
-      rentType = aString;
+  public void setname(String aString) {
+      name = aString;
   }
-  public String getrentType() {
-      return rentType;
+  public String getfirst_name() {
+      return first_name;
   }
-  public void setrentType(String aString) {
-      rentType = aString;
+  public void setfirst_name(String aString) {
+      first_name = aString;
+  }
+  public Integer getparent_data_id() {
+      return parent_data_id;
+  }
+  public void setparent_data_id(Integer aInteger) {
+      parent_data_id = aInteger;
+  }
+  public Parent_data getparent_data() {
+      return parent_data;
+  }
+  public void setparent_data(Parent_data aParent_data) {
+      parent_data = aParent_data;
   }
 }
 
@@ -37,15 +55,18 @@ $$
 DECLARE 
   RETURN QUERY INSERT INTO public.parent (
         p_name,
-    p_first_name
+    p_first_name,
+    p_parent_data_id
   )
   SELECT
         p_in.name,
-    p_in.first_name
+    p_in.first_name,
+    p_in.parent_data_id
   RETURNING
         p_id,
     p_name,
-    p_first_name
+    p_first_name,
+    p_parent_data_id
 END;
 $$ LANGUAGE 'plpgsql' SECURITY DEFINER;
 
@@ -59,7 +80,8 @@ BEGIN
   RETURNING
           p_id,
     p_name,
-    p_first_name
+    p_first_name,
+    p_parent_data_id
 END;
 $$ LANGUAGE 'plpgsql' SECURITY DEFINER;
 
@@ -70,13 +92,15 @@ BEGIN
   RETURN QUERY UPDATE public.parent 
   SET
         p_name = COALESCE ( p_in.name, p_name ),
-    p_first_name = COALESCE ( p_in.first_name, p_first_name )
+    p_first_name = COALESCE ( p_in.first_name, p_first_name ),
+    p_parent_data_id = COALESCE ( p_in.parent_data_id, p_parent_data_id )
   WHERE
         p_id = p_in.id
   RETURNING
         p_id,
     p_name,
-    p_first_name
+    p_first_name,
+    p_parent_data_id
 END;
 $$ LANGUAGE 'plpgsql' SECURITY DEFINER;
 
@@ -87,7 +111,12 @@ BEGIN
   RETURN QUERY SELECT
         p_id,
     p_name,
-    p_first_name
+    p_first_name,
+    p_parent_data_id,
+    CASE WHEN (p_parent_data_id) IS NOT NULL THEN 
+      (SELECT pd_id,pd_street,pd_city
+         FROM public.parent_data
+        WHERE (p_parent_data_id) = (pd_id)) ELSE NULL END
   WHERE
         p_id = p_in.id
   ;
