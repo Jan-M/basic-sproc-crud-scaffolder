@@ -1,61 +1,65 @@
-CREATE TYPE parentType AS ( 
+CREATE TYPE parentType AS (
   id integer,
   name text,
   first_name text
 );
 
+@DatabaseType
 class parentType {
+  @DatabaseField
   private Integer id;
+  @DatabaseField
   private String name;
+  @DatabaseField
   private String first_name;
-  public Integer getid() {
-      return id;
+  public Integer getrentType() {
+      return rentType;
   }
-  public void setid(Integer aInteger) {
-      id = aInteger;
+  public void setrentType(Integer aInteger) {
+      rentType = aInteger;
   }
-  public String getname() {
-      return name;
+  public String getrentType() {
+      return rentType;
   }
-  public void setname(String aString) {
-      name = aString;
+  public void setrentType(String aString) {
+      rentType = aString;
   }
-  public String getfirst_name() {
-      return first_name;
+  public String getrentType() {
+      return rentType;
   }
-  public void setfirst_name(String aString) {
-      first_name = aString;
+  public void setrentType(String aString) {
+      rentType = aString;
   }
 }
 
 CREATE OR REPLACE FUNCTION insertPublicParent(p_in parentType) RETURNS SETOF parentType AS
 $$
 DECLARE 
-BEGIN
-  RETURN QUERY INSERT INTO public.parent(  
-    p_name,
-    p_first_name) 
+  RETURN QUERY INSERT INTO public.parent (
+        p_name,
+    p_first_name
+  )
   SELECT
-    p_in.name,
+        p_in.name,
     p_in.first_name
   RETURNING
-    p_id,
+        p_id,
     p_name,
-    p_first_name;
+    p_first_name
 END;
 $$ LANGUAGE 'plpgsql' SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION deletePublicParent(p_in parentType) RETURNS SETOF parentType AS
 $$
-DECLARE 
+DECLARE
 BEGIN
-  RETURN DELETE FROM public.parent 
+  RETURN DELETE FROM public.parent
   WHERE
-    p_id = p_in.id
+          p_id = p_in.id
   RETURNING
-    p_id,
+          p_id,
     p_name,
-    p_first_name;
+    p_first_name
 END;
 $$ LANGUAGE 'plpgsql' SECURITY DEFINER;
 
@@ -63,15 +67,16 @@ CREATE OR REPLACE FUNCTION updatePublicParent(p_in parentType) RETURNS SETOF par
 $$
 DECLARE 
 BEGIN
-  RETURN QUERY UPDATE public.parent SET 
-    p_name = COALESCE ( p_in.name, p_name ),
+  RETURN QUERY UPDATE public.parent 
+  SET
+        p_name = COALESCE ( p_in.name, p_name ),
     p_first_name = COALESCE ( p_in.first_name, p_first_name )
   WHERE
-    p_id = p_in.id
+        p_id = p_in.id
   RETURNING
-    p_id,
+        p_id,
     p_name,
-    p_first_name;
+    p_first_name
 END;
 $$ LANGUAGE 'plpgsql' SECURITY DEFINER;
 
@@ -80,14 +85,12 @@ $$
 DECLARE 
 BEGIN
   RETURN QUERY SELECT
-    p_id,
+        p_id,
     p_name,
     p_first_name
-  FROM
-    public.parent 
   WHERE
-    p_id = p_in.id;
-
+        p_id = p_in.id
+  ;
 END;
 $$ LANGUAGE 'plpgsql' SECURITY DEFINER;
 

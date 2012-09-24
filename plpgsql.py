@@ -1,3 +1,8 @@
+import jinja2
+from jinja2 import FileSystemLoader
+
+e = jinja2.Environment(loader = FileSystemLoader('tpls'))
+
 def getPGTypeFieldName ( colName ):
   return colName[2:]
 
@@ -5,195 +10,123 @@ def getSProcName(schema,table):
   return schema[0:1].upper() + schema[1:] + table[0:1].upper() + table[1:]
 
 def create_pg_type ( name, fields ):
-  source = ""
-  source += """CREATE TYPE """ + name + """ AS ( \n"""
+  t = e.get_template('sql/type_definition.sql')
 
   colSource = []
 
   for f in fields:
     colSource.append("""  """ + getPGTypeFieldName ( f.name ) + """ """ + f.type )
   
-  source += ",\n".join(colSource)
-  
-  source += """\n);\n"""
-  
-  return source
+  return t.render(name=name,columns = ",\n".join(colSource))
 
 def create_insert(schema,tableName,pgTypeName,fields):
-  source = """CREATE OR REPLACE FUNCTION insert"""+getSProcName(schema,tableName)+"""(p_in """+pgTypeName+""") RETURNS SETOF """+pgTypeName+""" AS
-$$
-DECLARE """
-
-  source += """
-BEGIN
-  RETURN QUERY INSERT INTO """+schema+"""."""+tableName+"""(  
-"""
+  t = e.get_template('sql/insert.sql')
 
   cols = []
   for f in fields:
     if False == f.isSerial:
       cols.append ("    " + f.name )
 
-  source += ",\n".join(cols)
-
-  source += """) 
-  SELECT
-"""
+  columns = ",\n".join(cols)
 
   cols = []
   for f in fields:
     if False == f.isSerial:
       cols.append ( "    p_in." + getPGTypeFieldName ( f.name ) )
 
-  source += ",\n".join(cols)
-  
-  source += """
-  RETURNING
-"""
+  insertValues = ",\n".join(cols)
 
   cols = []
   for f in fields:
       cols.append ( "    " + f.name )
 
-  source += ",\n".join(cols)
-  source += ";"
+  returnColumns = ",\n".join(cols)
 
-  source += """
-END;
-"""
-
-  source += """$$ LANGUAGE 'plpgsql' SECURITY DEFINER;
-"""
-  return source
+  return t.render(sprocName  = getSProcName(schema,tableName),
+           returnType = pgTypeName,
+           schema=schema,
+           tableName=tableName,
+           columns=columns,
+           insertValues=insertValues,
+           returnColumns=returnColumns)
 
 def create_update(schema,tableName,pgTypeName,fields):
-  source = """CREATE OR REPLACE FUNCTION update"""+getSProcName(schema,tableName)+"""(p_in """+pgTypeName+""") RETURNS SETOF """+pgTypeName+""" AS
-$$
-DECLARE """
-
-  source += """
-BEGIN
-  RETURN QUERY UPDATE """+schema+"""."""+tableName+""" SET 
-"""
+  t = e.get_template('sql/update.sql')
 
   cols = []
   for f in fields:
     if False == f.isSerial:
       cols.append ("    " + f.name + " = COALESCE ( p_in." + getPGTypeFieldName ( f.name ) + ", " + f.name + " )" )
 
-  source += ",\n".join(cols)
-
-  source += """
-  WHERE
-"""
+  updateColumns = ",\n".join(cols)
 
   cols = []
   for f in fields:
     if True == f.isSerial:
       cols.append ( "    " + f.name + " = p_in." + getPGTypeFieldName ( f.name ) )
 
-  source += ",\n".join(cols)
+  whereColumns = ",\n".join(cols)
   
-  source += """
-  RETURNING
-"""
 
   cols = []
   for f in fields:
       cols.append ( "    " + f.name )
 
-  source += ",\n".join(cols)
-  source += ";"
+  returnColumns = ",\n".join(cols)
 
-  source += """
-END;
-"""
-
-  source += """$$ LANGUAGE 'plpgsql' SECURITY DEFINER;
-"""
-
-  return source
+  return t.render(sprocName  = getSProcName(schema,tableName),
+           returnType = pgTypeName,
+           schema=schema,
+           tableName=tableName,
+           updateColumns=updateColumns,
+           whereColumns=whereColumns,
+           returnColumns=returnColumns)
 
 def create_delete(schema,tableName,pgTypeName,fields):
-  source = """CREATE OR REPLACE FUNCTION delete"""+getSProcName(schema,tableName)+"""(p_in """+pgTypeName+""") RETURNS SETOF """+pgTypeName+""" AS
-$$
-DECLARE """
-
-  source += """
-BEGIN
-  RETURN DELETE FROM """+schema+"""."""+tableName+""" """
-
-  source += """
-  WHERE
-"""
-
+  t = e.get_template('sql/delete.sql')
+  
   cols = []
   for f in fields:
     if True == f.isSerial:
       cols.append ( "    " + f.name + " = p_in." + getPGTypeFieldName ( f.name ) )
 
-  source += ",\n".join(cols)
+  whereColumns = ",\n".join(cols)
   
-  source += """
-  RETURNING
-"""
-
   cols = []
   for f in fields:
       cols.append ( "    " + f.name )
 
-  source += ",\n".join(cols)
-  source += ";"
+  returnColumns = ",\n".join(cols)
 
-  source += """
-END;
-"""
-
-  source += """$$ LANGUAGE 'plpgsql' SECURITY DEFINER;
-""";
-
-  return source
+  return t.render(sprocName  = getSProcName(schema,tableName),
+           returnType = pgTypeName,
+           schema=schema,
+           tableName=tableName,
+           whereColumns=whereColumns,
+           returnColumns=returnColumns)
 
 def create_select_pk(schema,tableName,pgTypeName,fields):
-  source = """CREATE OR REPLACE FUNCTION select"""+getSProcName(schema,tableName)+"""(p_in """+pgTypeName+""") RETURNS SETOF """+pgTypeName+""" AS
-$$
-DECLARE """
-
-  source += """
-BEGIN
-  RETURN QUERY SELECT
-"""
+  t = e.get_template('sql/select_pk.sql')
 
   cols = []
   for f in fields:
       cols.append ("    " + f.name )
 
-  source += ",\n".join(cols)
-
-  source += """
-  FROM
-    """+schema+"""."""+tableName+""" 
-"""
-
-  source += """  WHERE
-"""
+  selectColumns = ",\n".join(cols)
 
   cols = []
   for f in fields:
     if True == f.isPk:
       cols.append ( "    " + f.name + " = p_in." + getPGTypeFieldName ( f.name ) )
 
-  source += ",\n".join(cols)
-  
-  source += """;
-"""
+  whereColumns = ",\n".join(cols)
 
-  source += """
-END;
-"""
-  source += """$$ LANGUAGE 'plpgsql' SECURITY DEFINER;
-"""
-  return source
+  return t.render(sprocName  = getSProcName(schema,tableName),
+           returnType = pgTypeName,
+           schema=schema,
+           tableName=tableName,
+           whereColumns=whereColumns,
+           selectColumns=selectColumns)
 
 
 def create_sprocs(schema,tableName,pgTypeName,fields):
