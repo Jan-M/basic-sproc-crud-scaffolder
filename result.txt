@@ -1,0 +1,94 @@
+CREATE TYPE parentType AS ( 
+  id integer,
+  name text,
+  first_name text
+);
+
+class parentType {
+  private Integer id;
+  private String name;
+  private String first_name;
+  public Integer getid() {
+      return id;
+  }
+  public void setid(Integer aInteger) {
+      id = aInteger;
+  }
+  public String getname() {
+      return name;
+  }
+  public void setname(String aString) {
+      name = aString;
+  }
+  public String getfirst_name() {
+      return first_name;
+  }
+  public void setfirst_name(String aString) {
+      first_name = aString;
+  }
+}
+
+CREATE OR REPLACE FUNCTION insertPublicParent(p_in parentType) RETURNS SETOF parentType AS
+$$
+DECLARE 
+BEGIN
+  RETURN QUERY INSERT INTO public.parent(  
+    p_name,
+    p_first_name) 
+  SELECT
+    p_in.name,
+    p_in.first_name
+  RETURNING
+    p_id,
+    p_name,
+    p_first_name;
+END;
+$$ LANGUAGE 'plpgsql' SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION deletePublicParent(p_in parentType) RETURNS SETOF parentType AS
+$$
+DECLARE 
+BEGIN
+  RETURN DELETE FROM public.parent 
+  WHERE
+    p_id = p_in.id
+  RETURNING
+    p_id,
+    p_name,
+    p_first_name;
+END;
+$$ LANGUAGE 'plpgsql' SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION updatePublicParent(p_in parentType) RETURNS SETOF parentType AS
+$$
+DECLARE 
+BEGIN
+  RETURN QUERY UPDATE public.parent SET 
+    p_name = COALESCE ( p_in.name, p_name ),
+    p_first_name = COALESCE ( p_in.first_name, p_first_name )
+  WHERE
+    p_id = p_in.id
+  RETURNING
+    p_id,
+    p_name,
+    p_first_name;
+END;
+$$ LANGUAGE 'plpgsql' SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION selectPublicParent(p_in parentType) RETURNS SETOF parentType AS
+$$
+DECLARE 
+BEGIN
+  RETURN QUERY SELECT
+    p_id,
+    p_name,
+    p_first_name
+  FROM
+    public.parent 
+  WHERE
+    p_id = p_in.id;
+
+END;
+$$ LANGUAGE 'plpgsql' SECURITY DEFINER;
+
+None
