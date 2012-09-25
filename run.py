@@ -27,6 +27,9 @@ class Table ( object ):
             l.append(f.name)
         return ",".join(l)
 
+    def getClassName(self):
+        return self.name
+
 class Association ( object ):
     def __init__(self, tableFrom, tableTo , colMap , doFollow = False):
         self.tableFrom = tableFrom
@@ -55,6 +58,12 @@ class Field(object):
         self.isArray = isArray
         self.isComplex = isComplex
         self.isSerial = isSerial
+
+class Enum(object):
+    def __init__(self, schema, name, values = []):
+        self.name = name
+        self.schema = schema
+        self.values = values
 
 def get_fields(schema,name):
   pass

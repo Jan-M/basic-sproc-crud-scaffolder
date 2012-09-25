@@ -1,3 +1,8 @@
+import jinja2
+from jinja2 import FileSystemLoader
+
+e = jinja2.Environment(loader = FileSystemLoader('tpls/java'))
+
 def getJavaFieldName( colName ):
     return colName[2:]
 
@@ -49,3 +54,9 @@ def create_java_type ( table ):
   source += "\n}\n"
 
   return source
+
+def create_sproc_service_interface():
+    pass
+
+def create_sproc_service_implementation():
+    pass
