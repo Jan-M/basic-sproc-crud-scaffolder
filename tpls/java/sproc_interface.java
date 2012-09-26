@@ -3,6 +3,6 @@ import de.zalando.sprocwrapper.SProcParam;
 import de.zalando.sprocwrapper.SProcService;
 
 @SProcService
-public interface ExampleBitmapShardSProcService {
-    {{ sprocList }}
+public interface {{ interfaceName }} {
+{{ sprocList }}
 }

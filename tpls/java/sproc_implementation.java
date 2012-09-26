@@ -3,13 +3,13 @@ import de.zalando.sprocwrapper.AbstractSProcService;
 
 @Repository
 public class {{ interfaceName }}Impl
-    extends AbstractSProcService<{{ interfaceName }}, {{ datasourcProvider }}>
+    extends AbstractSProcService<{{ interfaceName }}, {{ datasourceProvider }}>
     implements {{ interfaceName }} {
 
     @Autowired
-    public {{ interfaceName }}Impl( final {{ datasourcProvider }} p) {
+    public {{ interfaceName }}Impl( final {{ datasourceProvider }} p ) {
         super(p, {{ interfaceName }}.class);
     }
 
-    {{ functionImplementations }}   
+{{ functionImplementations }}   
 }

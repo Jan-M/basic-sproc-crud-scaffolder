@@ -28,7 +28,7 @@ class Table ( object ):
         return ",".join(l)
 
     def getClassName(self):
-        return self.name
+        return java.camel_case(self.name)
 
 class Association ( object ):
     def __init__(self, tableFrom, tableTo , colMap , doFollow = False):
@@ -79,6 +79,8 @@ def create_for_table(schema,name):
   print plpgsql.create_pg_type ( parentT )
   print java.create_java_type ( parentT )
   print plpgsql.create_sprocs( parentT, name + "Type", parentT.fields)
+  print java.create_sproc_service_interface( parentT )
+  print java.create_sproc_service_implementation( parentT )
 
 def main():
   create_for_table('public','parent')

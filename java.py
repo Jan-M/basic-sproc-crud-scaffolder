@@ -3,8 +3,15 @@ from jinja2 import FileSystemLoader
 
 e = jinja2.Environment(loader = FileSystemLoader('tpls/java'))
 
+def camel_case(s):
+    return ''.join([ word.capitalize() for word in s.split('_')])
+
+def camel_back(s):
+    c = camel_case(s)
+    return c[0].lower() + c[1:]
+
 def getJavaFieldName( colName ):
-    return colName[2:]
+    return camel_back(colName[2:])
 
 pg2javaMap = { 'text': 'String', 'integer': 'Integer' }
 
@@ -22,10 +29,10 @@ def create_java_setter(fieldName,fieldType):
   }"""
 
 def create_class_name ( table ) :
-    return table.name[0:1].upper() + table.name[1:]
+    return camel_case ( table.name )
 
 def create_field_name ( table ) :
-    return table.name
+    return camel_back ( table.name )
 
 def create_java_type ( table ):
   source = "@DatabaseType\nclass " + create_class_name(table) + " {\n"
@@ -55,8 +62,38 @@ def create_java_type ( table ):
 
   return source
 
-def create_sproc_service_interface():
-    pass
+def get_signatures_for_table ( table ):
+    signatures = []
+    
+    signatures.append ( ( table.getClassName() , "insert" + table.getClassName() , table.getClassName() ) )
+    signatures.append ( ( table.getClassName() , "delete" + table.getClassName() , table.getClassName() ) )
+    signatures.append ( ( table.getClassName() , "update" + table.getClassName() , table.getClassName() ) )
+    signatures.append ( ( table.getClassName() , "selectPk" + table.getClassName() , table.getClassName() ) )
 
-def create_sproc_service_implementation():
-    pass
+    return signatures
+
+def create_sproc_service_interface( table ):
+    t = e.get_template('sproc_interface.java')
+
+    sproc_list = ""
+    l = get_signatures_for_table ( table )
+    for (r,n,p) in l:
+        sproc_list += "  public " + r + " " + n + "( " + r + " a"+r+" );\n"
+
+    return t.render(interfaceName=table.getClassName()+"Service",
+                    sprocList=sproc_list)
+
+def create_sproc_service_implementation( table ):
+    t = e.get_template('sproc_implementation.java')
+
+    sproc_list = ""
+    l = get_signatures_for_table ( table )
+
+    for (r,n,p) in l:
+        sproc_list += "    public " + r + " " + n + "( " + r + " a"+r+""" ) {
+        return sproc."""+n+"""( a"""+r+""");
+    }\n\n"""
+
+    return t.render( interfaceName=table.getClassName()+"Service",
+                     functionImplementations=sproc_list,
+                     datasourceProvider='BitMapDatasourceProvider' )
