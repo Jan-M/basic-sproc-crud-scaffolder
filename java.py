@@ -35,7 +35,7 @@ def create_field_name ( table ) :
     return camel_back ( table.name )
 
 def create_java_type ( table ):
-  source = "@DatabaseType\nclass " + create_class_name(table) + " {\n"
+  source = "@DatabaseType\nclass " + table.getClassName() + " {\n"
   
   cols = []
   funcs = []
