@@ -4,7 +4,7 @@ from jinja2 import FileSystemLoader
 e = jinja2.Environment(loader = FileSystemLoader('tpls'))
 
 def getPGTypeFieldName ( colName ):
-  return colName[2:]
+  return colName[colName.find('_')+1:]
 
 def getSProcName(schema,table):
   return schema[0:1].upper() + schema[1:] + table[0:1].upper() + table[1:]

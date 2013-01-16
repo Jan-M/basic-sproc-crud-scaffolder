@@ -6,6 +6,12 @@ CREATE TYPE Parent AS (
   parent_data Parent_data
 );
 
+CREATE TYPE Parent_data AS (
+  id integer,
+  street text,
+  city text
+);
+
 @DatabaseType
 class Parent {
   @DatabaseField
@@ -13,11 +19,11 @@ class Parent {
   @DatabaseField
   private String name;
   @DatabaseField
-  private String first_name;
+  private String firstName;
   @DatabaseField
-  private Integer parent_data_id;
+  private Integer parentDataId;
 @DatabaseField
-  private Parent_data parent_data;
+  private ParentData parentData;
   public Integer getid() {
       return id;
   }
@@ -30,23 +36,51 @@ class Parent {
   public void setname(String aString) {
       name = aString;
   }
-  public String getfirst_name() {
-      return first_name;
+  public String getfirstName() {
+      return firstName;
   }
-  public void setfirst_name(String aString) {
-      first_name = aString;
+  public void setfirstName(String aString) {
+      firstName = aString;
   }
-  public Integer getparent_data_id() {
-      return parent_data_id;
+  public Integer getparentDataId() {
+      return parentDataId;
   }
-  public void setparent_data_id(Integer aInteger) {
-      parent_data_id = aInteger;
+  public void setparentDataId(Integer aInteger) {
+      parentDataId = aInteger;
   }
-  public Parent_data getparent_data() {
-      return parent_data;
+  public ParentData getparentData() {
+      return parentData;
   }
-  public void setparent_data(Parent_data aParent_data) {
-      parent_data = aParent_data;
+  public void setparentData(ParentData aParentData) {
+      parentData = aParentData;
+  }
+}
+
+@DatabaseType
+class ParentData {
+  @DatabaseField
+  private Integer id;
+  @DatabaseField
+  private String street;
+  @DatabaseField
+  private String city;
+  public Integer getid() {
+      return id;
+  }
+  public void setid(Integer aInteger) {
+      id = aInteger;
+  }
+  public String getstreet() {
+      return street;
+  }
+  public void setstreet(String aString) {
+      street = aString;
+  }
+  public String getcity() {
+      return city;
+  }
+  public void setcity(String aString) {
+      city = aString;
   }
 }
 
@@ -124,3 +158,46 @@ END;
 $$ LANGUAGE 'plpgsql' SECURITY DEFINER;
 
 None
+import de.zalando.sprocwrapper.SProcCall;
+import de.zalando.sprocwrapper.SProcParam;
+import de.zalando.sprocwrapper.SProcService;
+
+@SProcService
+public interface ParentService {
+  public Parent insertParent( Parent aParent );
+  public Parent deleteParent( Parent aParent );
+  public Parent updateParent( Parent aParent );
+  public Parent selectPkParent( Parent aParent );
+
+}
+import org.springframework.stereotype.Repository;
+import de.zalando.sprocwrapper.AbstractSProcService;
+
+@Repository
+public class ParentServiceImpl
+    extends AbstractSProcService<ParentService, BitMapDatasourceProvider>
+    implements ParentService {
+
+    @Autowired
+    public ParentServiceImpl( final BitMapDatasourceProvider p ) {
+        super(p, ParentService.class);
+    }
+
+    public Parent insertParent( Parent aParent ) {
+        return sproc.insertParent( aParent);
+    }
+
+    public Parent deleteParent( Parent aParent ) {
+        return sproc.deleteParent( aParent);
+    }
+
+    public Parent updateParent( Parent aParent ) {
+        return sproc.updateParent( aParent);
+    }
+
+    public Parent selectPkParent( Parent aParent ) {
+        return sproc.selectPkParent( aParent);
+    }
+
+   
+}
