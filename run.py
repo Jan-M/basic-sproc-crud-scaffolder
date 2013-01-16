@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import argparse
 import psycopg2
 
@@ -25,11 +26,11 @@ def closeConnection(c):
     c.close()
 
 def getAssociationsForTable(schema,table):
-    conn = getConn()
+    conn = getConnection()
     cursor = conn.cursor()
 
-def getFieldsForTable(schame,table):
-  conn = getConn();
+def getFieldsForTable(schema,table):
+  conn = getConnection();
   cursor = conn.cursor()
   cursor.execute("""select column_name, data_type, column_default, is_nullable,
                            (select column_name in ( select column_name
@@ -46,7 +47,16 @@ def getFieldsForTable(schame,table):
 
   l = []
   for r in cursor:
-    l.append(Field (r[0],r[1],isPk=r[4],isSerial=r[2][0:7]=='nextval') )
+    print r
+    f = Field (r[0],r[1],isPk=r[4])
+
+    if r[2] != None and r[2][0:7] == 'nextval':
+      f.set_is_serial ( True )
+
+    l.append( f )
+
+  cursor.close()
+  closeConnection(conn)
 
   return l
 
@@ -67,6 +77,9 @@ class Table ( object ):
 
     def addChild (self, c ):
         self.children.append(c)
+
+    def getName(self):
+        return self.name
 
     def getSelectFieldListForType(self):
         l = []
@@ -106,6 +119,9 @@ class Field(object):
         self.isComplex = isComplex
         self.isSerial = isSerial
 
+    def set_is_serial(self,v):
+      self.isSerial = v
+
 class Enum(object):
     def __init__(self, schema, name, values = []):
         self.name = name
@@ -114,6 +130,14 @@ class Enum(object):
 
 def get_fields(schema,name):
   pass
+
+def scaffold( table ):
+  print plpgsql.create_pg_type ( table )
+  print java.create_java_type ( table )
+  print plpgsql.create_sprocs( table , table.getName() + "Type", table.fields )
+  print java.create_sproc_service_interface( table )
+  print java.create_sproc_service_implementation( table )
+
 
 def create_for_table(schema,name):
   parentT = Table('public','parent',[Field('p_id','integer',isPk=True,isSerial=True), Field('p_name','text'), Field('p_first_name','text'), Field('p_parent_data_id','integer') ])
@@ -137,12 +161,20 @@ def main():
   argp.add_argument('-U', '--user', dest='user')
   argp.add_argument('-D', '--database', dest='database')
   argp.add_argument('-T', '--table', dest='table')
+  argp.add_argument('-S', '--schema', dest='schema')
+  argp.add_argument('-P', '--port', dest='port',default=5432)
   args = argp.parse_args()
 
   if args.table == None:
     create_for_table('public','parent')
   else:
-    pass
+    setConnectionString( 'host='+args.host+' user='+args.user+' port='+ str(args.port) +' dbname=' + args.database )
+    fields = getFieldsForTable(args.schema, args.table)
+    t = Table ( args.schema, args.table, fields)
+    scaffold ( t )
+    
+
+
 
 if __name__ == "__main__":
     main()
