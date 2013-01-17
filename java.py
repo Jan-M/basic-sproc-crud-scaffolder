@@ -13,7 +13,7 @@ def camel_back(s):
 def getJavaFieldName( colName ):
     return camel_back(colName[2:])
 
-pg2javaMap = { 'text': 'String', 'integer': 'Integer', 'timestamp without time zone' : 'Date' }
+pg2javaMap = { 'text': 'String', 'integer': 'Integer', 'bigint' : 'Long', 'timestamp without time zone' : 'Date' , 'character varying' : 'String' , 'smallint' : 'Integer' , 'character' : 'String' }
 
 def getJavaType(field):
     return pg2javaMap[field.type]

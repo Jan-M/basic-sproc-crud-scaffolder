@@ -172,9 +172,6 @@ def main():
     fields = getFieldsForTable(args.schema, args.table)
     t = Table ( args.schema, args.table, fields)
     scaffold ( t )
-    
-
-
 
 if __name__ == "__main__":
     main()
