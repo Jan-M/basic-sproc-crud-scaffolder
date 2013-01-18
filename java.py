@@ -16,7 +16,7 @@ def getJavaFieldName( colName ):
 pg2javaMap = { 'text': 'String', 'integer': 'Integer', 'bigint' : 'Long', 'timestamp without time zone' : 'Date' , 'character varying' : 'String' , 'smallint' : 'Integer' , 'character' : 'String' }
 
 def getJavaType(field):
-    return pg2javaMap[field.type]
+    return field.get_java_type()
 
 def create_java_getter(fieldName,fieldType):
   return """  public """ + fieldType + """ get"""+fieldName+"""() {

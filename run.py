@@ -48,7 +48,7 @@ def getFieldsForTable(schema,table):
   l = []
   for r in cursor:
     print r
-    f = Field (r[0],r[1],isPk=r[4])
+    f = Field (r[0],r[1],isPk=r[4],isNullable=r[3])
 
     if r[2] != None and r[2][0:7] == 'nextval':
       f.set_is_serial ( True )
@@ -109,8 +109,11 @@ class Association ( object ):
             l.append(self.colMap[k])
         return ",".join(l)
 
+pg2javaMap = { 'text': 'String', 'integer': 'Integer', 'bigint' : 'Long', 'timestamp without time zone' : 'Date' , 'character varying' : 'String' , 'smallint' : 'Integer' , 'character' : 'String' }
+pg2javaMapNotNull = { 'text': 'String', 'integer': 'integer', 'bigint' : 'long', 'timestamp without time zone' : 'Date' , 'character varying' : 'String' , 'smallint' : 'integer' , 'character' : 'String' }
+
 class Field(object):
-    def __init__(self, name, t, isSerial = False, isPk = False, isEnum = False, isArray = False, isComplex = False):
+    def __init__(self, name, t, isSerial = False, isPk = False, isEnum = False, isArray = False, isComplex = False, isNullable=True):
         self.isPk = isPk
         self.type = t
         self.name = name
@@ -118,9 +121,17 @@ class Field(object):
         self.isArray = isArray
         self.isComplex = isComplex
         self.isSerial = isSerial
+        self.isNullable = isNullable
 
     def set_is_serial(self,v):
       self.isSerial = v
+
+    def get_java_type(self):
+      if self.isNullable:
+        return pg2javaMap[self.type]
+      else:
+        return pg2javaMapNotNull[self.type]
+
 
 class Enum(object):
     def __init__(self, schema, name, values = []):
