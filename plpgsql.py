@@ -1,3 +1,5 @@
+import os
+import sys
 import jinja2
 from jinja2 import FileSystemLoader
 
@@ -7,10 +9,12 @@ def getPGTypeFieldName ( colName ):
   return colName[colName.find('_')+1:]
 
 def getSProcName(schema,table):
-  return schema[0:1].upper() + schema[1:] + table[0:1].upper() + table[1:]
+  return table
+#  return schema[0:1].upper() + schema[1:] + table[0:1].upper() + table[1:]
 
 def getTypeName(table):
-  return table.name[0:1].upper() + table.name[1:]
+  return table.name
+#  return table.name[0:1].upper() + table.name[1:]
 
 def getFieldNameForTable(table):
   return table.name  
@@ -21,105 +25,95 @@ def create_pg_type ( table ):
   colSource = []
 
   for f in table.fields:
-    colSource.append("""  """ + getPGTypeFieldName ( f.name ) + """ """ + f.type )
+    type = f.type
+    if f.maxLength is not None and f.maxLength > 0:
+        type += "(" + str(f.maxLength) + ")"
+    colSource.append("""  """ + getPGTypeFieldName ( f.name ) + """ """ + type )
 
   for a in table.associations:
     colSource.append("""  """ + getFieldNameForTable ( a.tableTo ) + """ """ + getTypeName(a.tableTo) )
   
-  return t.render( name = getTypeName(table) ,columns = ",\n".join(colSource))
+  return t.render( name = getTypeName(table), columns = ",\n".join(colSource))
 
-def create_insert(schema,tableName,pgTypeName,fields):
+def create_insert(table):
   t = e.get_template('sql/insert.sql')
 
   cols = []
-  for f in fields:
+  ins = []
+  rets = []
+  for f in table.fields:
+    rets.append ( "    " + f.name )
     if False == f.isSerial:
       cols.append ("    " + f.name )
+      ins.append ( "    p_in." + getPGTypeFieldName ( f.name ) )
 
   columns = ",\n".join(cols)
+  insertValues = ",\n".join(ins)
+  returnColumns = ",\n".join(rets)
 
-  cols = []
-  for f in fields:
-    if False == f.isSerial:
-      cols.append ( "    p_in." + getPGTypeFieldName ( f.name ) )
-
-  insertValues = ",\n".join(cols)
-
-  cols = []
-  for f in fields:
-      cols.append ( "    " + f.name )
-
-  returnColumns = ",\n".join(cols)
-
-  return t.render(sprocName  = getSProcName(schema,tableName),
-           returnType = pgTypeName,
-           schema=schema,
-           tableName=tableName,
+  return t.render(sprocName  = getSProcName(table.schema,table.name),
+           returnType = getTypeName(table),
+           schema=table.schema,
+           tableName=table.name,
            columns=columns,
            insertValues=insertValues,
            returnColumns=returnColumns)
 
-def create_update(schema,tableName,pgTypeName,fields):
+def create_update(table):
   t = e.get_template('sql/update.sql')
 
   cols = []
-  for f in fields:
-    if False == f.isSerial:
+  wheres = []
+  rets = []
+  for f in table.fields:
+    rets.append ( "    " + f.name )
+    if True == f.isSerial:
       cols.append ("    " + f.name + " = COALESCE ( p_in." + getPGTypeFieldName ( f.name ) + ", " + f.name + " )" )
+      wheres.append ( "    " + f.name + " = p_in." + getPGTypeFieldName ( f.name ) )
 
   updateColumns = ",\n".join(cols)
+  whereColumns = ",\n".join(wheres)
+  returnColumns = ",\n".join(rets)
 
-  cols = []
-  for f in fields:
-    if True == f.isSerial:
-      cols.append ( "    " + f.name + " = p_in." + getPGTypeFieldName ( f.name ) )
-
-  whereColumns = ",\n".join(cols)
-  
-
-  cols = []
-  for f in fields:
-      cols.append ( "    " + f.name )
-
-  returnColumns = ",\n".join(cols)
-
-  return t.render(sprocName  = getSProcName(schema,tableName),
-           returnType = pgTypeName,
-           schema=schema,
-           tableName=tableName,
+  return t.render(sprocName  = getSProcName(table.schema,table.name),
+           returnType = getTypeName(table),
+           schema=table.schema,
+           tableName=table.name,
            updateColumns=updateColumns,
            whereColumns=whereColumns,
            returnColumns=returnColumns)
 
-def create_delete(schema,tableName,pgTypeName,fields):
+def create_delete(table):
   t = e.get_template('sql/delete.sql')
   
   cols = []
-  for f in fields:
+  rets = []
+  for f in table.fields:
+    rets.append ( "    " + f.name )
     if True == f.isSerial:
       cols.append ( "    " + f.name + " = p_in." + getPGTypeFieldName ( f.name ) )
 
   whereColumns = ",\n".join(cols)
-  
-  cols = []
-  for f in fields:
-      cols.append ( "    " + f.name )
+  returnColumns = ",\n".join(rets)
 
-  returnColumns = ",\n".join(cols)
-
-  return t.render(sprocName  = getSProcName(schema,tableName),
-           returnType = pgTypeName,
-           schema=schema,
-           tableName=tableName,
+  return t.render(sprocName  = getSProcName(table.schema,table.name),
+           returnType = getTypeName(table),
+           schema=table.schema,
+           tableName=table.name,
            whereColumns=whereColumns,
            returnColumns=returnColumns)
 
-def create_select_pk(table, schema,tableName,pgTypeName,fields):
+def create_select_pk(table):
   t = e.get_template('sql/select_pk.sql')
 
   cols = []
-  for f in fields:
-      cols.append ("    " + f.name )
+  wheres = []
+  keys = []
+  for f in table.fields:
+    cols.append ("    " + f.name )
+    if True == f.isPk:
+      wheres.append ( "    " + f.name + " = p_" + getPGTypeFieldName ( f.name ) )
+      keys.append( "p_" + getPGTypeFieldName(f.name) + " " + f.type )
 
   for a in table.associations:
     if a.doFollow and a.tableFrom == table:
@@ -131,26 +125,41 @@ def create_select_pk(table, schema,tableName,pgTypeName,fields):
         cols.append ( """ ARRAY ( SELECT """ + a.tableFrom.getSelectFieldListForType() + """ FROM """ + a.tableFrom.schema+"."+a.tableFrom.name+ """ WHERE (""" + a.getSourceTuple() + """) = (""" + a.getTargetTuple() + """) ) """ )
 
   selectColumns = ",\n".join(cols)
+  whereColumns = ",\n".join(wheres)
 
-  cols = []
-  for f in table.fields:
-    if True == f.isPk:
-      cols.append ( "    " + f.name + " = p_in." + getPGTypeFieldName ( f.name ) )
-
-
-
-  whereColumns = ",\n".join(cols)
-
-  return t.render(sprocName  = getSProcName(schema,tableName),
-           returnType = pgTypeName,
-           schema=schema,
-           tableName=tableName,
+  return t.render(sprocName  = getSProcName(table.schema,table.name),
+           keyColumns = ", ".join(keys),
+           returnType = getTypeName(table),
+           schema=table.schema,
+           tableName=table.name,
            whereColumns=whereColumns,
            selectColumns=selectColumns)
 
+def create_sprocs(table):
+  ret  = create_insert(table)
+  ret += create_delete(table)
+  ret += create_update(table)
+  ret += create_select_pk(table)
+  return ret
 
-def create_sprocs(table, pgTypeName,fields):
-  print create_insert(table.schema,table.name,pgTypeName,fields)
-  print create_delete(table.schema,table.name,pgTypeName,fields)
-  print create_update(table.schema,table.name,pgTypeName,fields)
-  print create_select_pk(table, table.schema,table.name,pgTypeName,fields)
+def save_file( path, file_name, data ):
+    if not os.path.isdir(path):
+      os.makedirs(path, 0755)
+    fd = open(path + os.sep + "20_" + file_name + ".sql", "w")
+    fd.write(data)
+    fd.close()
+
+def generate_code( table, path ):
+  src = create_pg_type( table )
+  file_name = getTypeName( table )
+  save_file( path + os.sep + '03_types', file_name, src )
+  
+  sp = path + os.sep + '05_stored_procedures'
+  src = create_insert(table)
+  save_file( sp, file_name + '_create', src )
+  src = create_update(table)
+  save_file( sp, file_name + '_update', src )
+  src = create_delete(table)
+  save_file( sp, file_name + '_delete', src )
+  src = create_select_pk(table)
+  save_file( sp, file_name + '_get_by_id', src )

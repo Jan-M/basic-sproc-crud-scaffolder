@@ -1,8 +1,8 @@
-import de.zalando.sprocwrapper.SProcCall;
+{{ package }}import de.zalando.sprocwrapper.SProcCall;
 import de.zalando.sprocwrapper.SProcParam;
 import de.zalando.sprocwrapper.SProcService;
-
-@SProcService
+{{ importList }}
+@SProcService(prefix = "{{ prefix }}")
 public interface {{ interfaceName }} {
 {{ sprocList }}
 }

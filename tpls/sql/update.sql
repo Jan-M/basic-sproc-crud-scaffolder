@@ -1,14 +1,14 @@
-CREATE OR REPLACE FUNCTION update{{sprocName}}(p_in {{returnType}}) RETURNS SETOF {{returnType}} AS
+CREATE OR REPLACE FUNCTION {{sprocName}}_update(p_in {{returnType}}) RETURNS SETOF {{returnType}} AS
 $$
 DECLARE 
 BEGIN
   RETURN QUERY UPDATE {{schema}}.{{tableName}} 
   SET
-    {{ updateColumns }}
+{{ updateColumns }}
   WHERE
-    {{ whereColumns }}
+{{ whereColumns }}
   RETURNING
-    {{ returnColumns }}
+{{ returnColumns }}
 END;
 $$ LANGUAGE 'plpgsql' SECURITY DEFINER;
 

@@ -1,11 +1,12 @@
-CREATE OR REPLACE FUNCTION select{{sprocName}}(p_in {{returnType}}) RETURNS SETOF {{returnType}} AS
+CREATE OR REPLACE FUNCTION {{ sprocName }}_get_by_id({{ keyColumns }}) RETURNS SETOF {{ returnType }} AS
 $$
 DECLARE 
 BEGIN
   RETURN QUERY SELECT
-    {{ selectColumns }}
+{{ selectColumns }}
+  FROM {{schema}}.{{tableName}}
   WHERE
-    {{ whereColumns }}
+{{ whereColumns }}
   ;
 END;
 $$ LANGUAGE 'plpgsql' SECURITY DEFINER;
