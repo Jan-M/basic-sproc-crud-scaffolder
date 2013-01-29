@@ -103,7 +103,7 @@ def create_delete(table):
            whereColumns=whereColumns,
            returnColumns=returnColumns)
 
-def create_select_pk(table, index):
+def create_select_pk(table):
   t = e.get_template('sql/select_using_uk.sql')
 
   cols = []

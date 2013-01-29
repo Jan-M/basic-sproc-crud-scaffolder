@@ -189,7 +189,7 @@ def create_for_table(schema,name,package):
   print plpgsql.create_pg_type ( parentDataT )
   print java.create_java_type ( parentT, package )
   print java.create_java_type ( parentDataT, package )
-  print plpgsql.create_sprocs( parentT, name + "Type" )
+  print plpgsql.create_sprocs( parentT )
   print java.create_sproc_service_interface( parentT, package )
   print java.create_sproc_service_implementation( parentT, package )
 
