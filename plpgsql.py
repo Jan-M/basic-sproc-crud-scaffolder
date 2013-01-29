@@ -103,8 +103,8 @@ def create_delete(table):
            whereColumns=whereColumns,
            returnColumns=returnColumns)
 
-def create_select_pk(table):
-  t = e.get_template('sql/select_pk.sql')
+def create_select_pk(table, index):
+  t = e.get_template('sql/select_using_uk.sql')
 
   cols = []
   wheres = []
@@ -135,6 +135,35 @@ def create_select_pk(table):
            whereColumns=whereColumns,
            selectColumns=selectColumns)
 
+def generate_selects(sp, table):
+  t = e.get_template('sql/select_using_uk.sql')
+  file_name = getTypeName( table )
+  
+  cols = []
+  for f in table.fields:
+      cols.append( "    " + f.name )
+  selectColumns = ",\n".join(cols)
+
+  for ui in table.indexes:
+      keys = []
+      wheres = []
+      names = []
+      for i in ui:
+          f = table.fields[int(i) - 1]
+          wheres.append( "    " + f.name + " = p_" + getPGTypeFieldName ( f.name ) )
+          keys.append( "p_" + getPGTypeFieldName(f.name) + " " + f.type )
+          names.append( getPGTypeFieldName ( f.name ) )
+      proc_name = "_".join( names )
+      src = t.render(sprocName  = getSProcName(table.schema,table.name),
+           keyColumns = ", ".join(keys),
+           uniqueKeyName = proc_name,
+           returnType = getTypeName(table),
+           schema=table.schema,
+           tableName=table.name,
+           whereColumns=",\n".join(wheres),
+           selectColumns=selectColumns)
+      save_file( sp, file_name + '_get_by_' + proc_name, src )
+
 def create_sprocs(table):
   ret  = create_insert(table)
   ret += create_delete(table)
@@ -161,5 +190,5 @@ def generate_code( table, path ):
   save_file( sp, file_name + '_update', src )
   src = create_delete(table)
   save_file( sp, file_name + '_delete', src )
-  src = create_select_pk(table)
-  save_file( sp, file_name + '_get_by_id', src )
+  generate_selects(sp, table)
+

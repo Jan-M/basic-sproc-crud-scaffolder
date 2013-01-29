@@ -63,6 +63,24 @@ def getFieldsForTable(schema,table):
 
   return l
 
+def getUniqueIndexesForTable(schema, table):
+    conn = getConnection()
+    cursor = conn.cursor()
+    cursor.execute("""select indkey
+                        from pg_class c,
+                             pg_index i,
+                             pg_namespace n
+                       where i.indisunique
+                         and c.relnamespace = n.oid
+                         and c.oid = i.indrelid
+                         and n.nspname = '""" + schema + """'
+                         and c.relname = '""" + table + """'""")
+
+    ret = []
+    for r in cursor:
+        if r[0] is not None and r[0][0] != '0' and r[0][0] != '-': 
+            ret.append(r[0].split(' '))
+    return ret
 
 class Table ( object ):
     def __init__(self,schema,name,fields=[]):
@@ -71,6 +89,7 @@ class Table ( object ):
         self.fields = fields
         self.associations = []
         self.children = []
+        self.indexes = []
 
     def addField(self, f):
         self.fields.append(f)
@@ -93,6 +112,9 @@ class Table ( object ):
     def getClassName(self):
         return java.camel_case(self.name)
 
+    def setIndexes(self, v):
+        self.indexes = v
+
 class Association ( object ):
     def __init__(self, tableFrom, tableTo , colMap , doFollow = False):
         self.tableFrom = tableFrom
@@ -112,8 +134,8 @@ class Association ( object ):
             l.append(self.colMap[k])
         return ",".join(l)
 
-pg2javaMap        = { 'text': 'String', 'integer': 'Integer', 'bigint' : 'Long', 'timestamp without time zone' : 'Date', 'character varying' : 'String', 'smallint' : 'Integer' , 'character' : 'String', 'boolean' : 'Boolean' }
-pg2javaMapNotNull = { 'text': 'String', 'integer': 'int',     'bigint' : 'long', 'timestamp without time zone' : 'Date', 'character varying' : 'String', 'smallint' : 'int',      'character' : 'String', 'boolean' : 'boolean' }
+pg2javaMap        = { 'text': 'String', 'integer': 'Integer', 'bigint' : 'Long', 'timestamp without time zone' : 'Date', 'timestamp with time zone': 'Date', 'character varying' : 'String', 'smallint' : 'Integer' , 'character' : 'String', 'boolean' : 'Boolean' }
+pg2javaMapNotNull = { 'text': 'String', 'integer': 'int',     'bigint' : 'long', 'timestamp without time zone' : 'Date', 'timestamp with time zone': 'Date', 'character varying' : 'String', 'smallint' : 'int',      'character' : 'String', 'boolean' : 'boolean' }
 
 class Field(object):
     def __init__(self, name, type, maxLength = -1, isSerial = False, isPk = False, isEnum = False, isArray = False, isComplex = False, isNullable=True):
@@ -190,6 +212,8 @@ def main():
     setConnectionString( 'host='+args.host+' user='+args.user+' port='+ str(args.port) +' dbname=' + args.database )
     fields = getFieldsForTable(args.schema, args.table)
     t = Table ( args.schema, args.table, fields)
+    i = getUniqueIndexesForTable(args.schema, args.table)
+    t.setIndexes(i)
     scaffold ( t, args.package, args.path, args.opg )
 
 if __name__ == "__main__":

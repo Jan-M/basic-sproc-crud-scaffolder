@@ -46,20 +46,27 @@ service_sfx = 'SProcService'
 def create_java_type ( table, package ):
   package += type_package;
 
-  source = "package " + package + ";\n\nclass " + table.getClassName() + " {\n"
 
   cols = []
   funcs = []
+  fieldAnn = "  @DatabaseField\n" 
+  imports = {'com.typemapper.annotations.DatabaseField': 1}
 
   for f in table.fields:
     fieldName = getJavaFieldName(f.name)
     methodName = getJavaMethodName(f.name)
-    fieldAnn = "  @DatabaseField\n" 
+    typeName = getJavaType(f)
     col = fieldAnn
     if not f.isNullable:
-        col += "  @NotNull\n"
+        if (typeName == 'String'):
+            col += "  @NotBlank\n"
+            imports['org.hibernate.validator.constraints.NotBlank'] = 1
+        else:
+            col += "  @NotNull\n"
+            imports['javax.validation.constraints.NotNull'] = 1
     if f.maxLength is not None and f.maxLength > 0:
         col += "  @Max(" + str(f.maxLength) + ")\n"
+        imports['javax.validation.constraints.Max'] = 1
     col += "  private " +getJavaType(f) + " " + fieldName + ";\n"
     cols.append ( col )
     funcs.append ( create_java_getter ( fieldName , getJavaType(f), methodName ) )
@@ -74,6 +81,11 @@ def create_java_type ( table, package ):
         funcs.append ( create_java_setter ( fieldName , className, className ) )
     elif a.tableTo == table: # collection
         cols.append ( fieldAnn + "  private List<" + create_class_name(a.tableFrom) + "> " + create_field_name ( a.tableFrom ) + "s;\n" )
+
+  source = "package " + package + ";\n"
+  for k,v in imports.iteritems():
+      source += "\nimport " + k + ";"
+  source += "\n\nclass " + table.getClassName() + " {\n"
 
   source += "\n".join(cols)
   source += "\n"
@@ -90,7 +102,6 @@ def get_signatures_for_table ( table ):
     signatures.append ( ( table.getClassName() , "insert", table.getClassName() ) )
     signatures.append ( ( table.getClassName() , "delete", table.getClassName() ) )
     signatures.append ( ( table.getClassName() , "update", table.getClassName() ) )
-#    signatures.append ( ( table.getClassName() , "selectPk" + table.getClassName() , table.getClassName() ) )
 
     return signatures
 
@@ -106,11 +117,14 @@ def create_sproc_service_interface( table, package ):
         lower_field_name = field_name[0].lower() + field_name[1:]
         sproc_list.append( "  public " + field_name + " " + method_name + "(" + field_name + " "+lower_field_name+");" )
 
-    keys = []
-    for f in table.fields:
-      if True == f.isPk:
-        keys.append( getJavaType(f) + " " + getJavaFieldName(f.name) )
-    sproc_list.append( "  public " + table.getClassName() + " getById(" + ", ".join(keys) + ");" )
+    for ui in table.indexes:
+      keys = []
+      names = []
+      for i in ui:
+          f = table.fields[int(i) - 1]
+          keys.append( getJavaType(f) + " " + getJavaFieldName(f.name) )
+          names.append( getJavaMethodName(f.name) )
+      sproc_list.append( "  public " + table.getClassName() + " getBy" + "".join(names) + "(" + ", ".join(keys) + ");" )
 
     return t.render(interfaceName=table.getClassName()+service_sfx,
                     sprocList="\n".join( sproc_list ),
@@ -134,15 +148,17 @@ def create_sproc_service_implementation( table, package ):
         return sproc."""+method_name+"""(""" + lower_field_name + """);
     }""" )
 
-    keys = []
-    types = []
-    for f in table.fields:
-      if True == f.isPk:
-        types.append( getJavaType(f) + " " + getJavaFieldName(f.name) )
-        keys.append( getJavaFieldName(f.name) )
-
-    sproc_list.append( "    @Override\n    public " + table.getClassName() + " getById(" + ", ".join(types) + """) {
-        return sproc.getById(""" + ", ".join(keys) + """);
+    for ui in table.indexes:
+      keys = []
+      names = []
+      types = []
+      for i in ui:
+          f = table.fields[int(i) - 1]
+          types.append( getJavaType(f) + " " + getJavaFieldName(f.name) )
+          keys.append( getJavaFieldName(f.name) )
+          names.append( getJavaMethodName(f.name) )
+      sproc_list.append( "    @Override\n    public " + table.getClassName() + " getBy" + "".join(names) + "(" + ", ".join(types) + """) {
+        return sproc.getBy""" + "".join(names) + "(" + ", ".join(keys) + """);
     }""" )
 
     return t.render(interfaceName=table.getClassName()+service_sfx,

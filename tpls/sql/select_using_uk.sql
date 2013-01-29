@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION {{ sprocName }}_get_by_id({{ keyColumns }}) RETURNS SETOF {{ returnType }} AS
+CREATE OR REPLACE FUNCTION {{ sprocName }}_get_by_{{ uniqueKeyName }}({{ keyColumns }}) RETURNS SETOF {{ returnType }} AS
 $$
 DECLARE 
 BEGIN
