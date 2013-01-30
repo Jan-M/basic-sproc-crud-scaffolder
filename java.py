@@ -22,15 +22,15 @@ def getJavaType(field):
     return field.get_java_type()
 
 def create_java_getter(fieldName, fieldType, methodName):
-  return """  public """ + fieldType + """ get"""+methodName+"""() {
-      return """ + fieldName + """;
-  }"""
+  return """    public """ + fieldType + """ get"""+methodName+"""() {
+        return """ + fieldName + """;
+    }"""
 
 def create_java_setter(fieldName, fieldType, methodName):
   
-  return """  public void set""" + methodName + """(""" + fieldType + """ """ + fieldName + """) {
-      this.""" + fieldName+""" = """ + fieldName + """;
-  }"""
+  return """    public void set""" + methodName + """(""" + fieldType + """ """ + fieldName + """) {
+        this.""" + fieldName+""" = """ + fieldName + """;
+    }"""
 
 def create_class_name ( table ) :
     return camel_case ( table.name )
@@ -56,7 +56,7 @@ def create_java_enum ( table, package ):
 def create_java_type ( table, package ):
   cols = []
   funcs = []
-  fieldAnn = "  @DatabaseField\n" 
+  fieldAnn = "    @DatabaseField\n" 
   imports = {'com.typemapper.annotations.DatabaseField': 1}
 
   for f in table.fields:
@@ -66,15 +66,15 @@ def create_java_type ( table, package ):
     col = fieldAnn
     if not f.isNullable:
         if (typeName == 'String'):
-            col += "  @NotBlank\n"
+            col += "    @NotBlank\n"
             imports['org.hibernate.validator.constraints.NotBlank'] = 1
         else:
-            col += "  @NotNull\n"
+            col += "    @NotNull\n"
             imports['javax.validation.constraints.NotNull'] = 1
     if f.maxLength is not None and f.maxLength > 0:
-        col += "  @Max(" + str(f.maxLength) + ")\n"
+        col += "    @Max(" + str(f.maxLength) + ")\n"
         imports['javax.validation.constraints.Max'] = 1
-    col += "  private " +getJavaType(f) + " " + fieldName + ";\n"
+    col += "    private " +getJavaType(f) + " " + fieldName + ";\n"
     cols.append ( col )
     funcs.append ( create_java_getter ( fieldName , getJavaType(f), methodName ) )
     funcs.append ( create_java_setter ( fieldName , getJavaType(f), methodName ) )
@@ -83,11 +83,11 @@ def create_java_type ( table, package ):
     if a.tableFrom == table: # single item
         fieldName = create_field_name(a.tableTo)
         className = create_class_name(a.tableTo)
-        cols.append ( fieldAnn + "  private " + className + " " + fieldName + ";\n" )
+        cols.append ( fieldAnn + "    private " + className + " " + fieldName + ";\n" )
         funcs.append ( create_java_getter ( fieldName , className, className ) )
         funcs.append ( create_java_setter ( fieldName , className, className ) )
     elif a.tableTo == table: # collection
-        cols.append ( fieldAnn + "  private List<" + create_class_name(a.tableFrom) + "> " + create_field_name ( a.tableFrom ) + "s;\n" )
+        cols.append ( fieldAnn + "    private List<" + create_class_name(a.tableFrom) + "> " + create_field_name ( a.tableFrom ) + "s;\n" )
 
   source = "package " + package + ";\n"
   for k,v in imports.iteritems():
@@ -122,7 +122,7 @@ def create_sproc_service_interface( table, package ):
     l = get_signatures_for_table ( table )
     for (field_name, method_name, p) in l:
         lower_field_name = field_name[0].lower() + field_name[1:]
-        sproc_list.append( "  public " + field_name + " " + method_name + "(" + field_name + " "+lower_field_name+");" )
+        sproc_list.append( "    public " + field_name + " " + method_name + "(" + field_name + " "+lower_field_name+");" )
 
     for ui in table.indexes:
       keys = []
@@ -131,7 +131,7 @@ def create_sproc_service_interface( table, package ):
           f = table.fields[int(i) - 1]
           keys.append( getJavaType(f) + " " + getJavaFieldName(f.name) )
           names.append( getJavaMethodName(f.name) )
-      sproc_list.append( "  public " + table.getClassName() + " getBy" + "".join(names) + "(" + ", ".join(keys) + ");" )
+      sproc_list.append( "    public " + table.getClassName() + " getBy" + "".join(names) + "(" + ", ".join(keys) + ");" )
 
     return t.render(interfaceName=table.getClassName()+service_sfx,
                     sprocList="\n".join( sproc_list ),
