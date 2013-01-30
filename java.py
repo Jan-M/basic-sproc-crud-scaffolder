@@ -43,10 +43,17 @@ iface_package = 'persistence'
 impl_package = iface_package + '.impl'
 service_sfx = 'SProcService'
 
+def create_java_enum ( table, package ):
+    out = "package " + package + ";\n\n"
+    out += "public enum " + table.getClassName() + " {\n"
+    values = []
+    for v in table.values:
+        values.append("    " + v)
+    out += ",\n".join(values)
+    out += "\n}\n"
+    return out
+
 def create_java_type ( table, package ):
-  package += type_package;
-
-
   cols = []
   funcs = []
   fieldAnn = "  @DatabaseField\n" 
@@ -185,8 +192,17 @@ def generate_code( table, package, path ):
     package += '.'
 
   pp = get_package_path(package + type_package)
-  class_name = table.getClassName();
-  src = create_java_type ( table, package )
+
+  for k,v in table.complexTypes.iteritems():
+      class_name = v.getClassName()
+      if v.isEnum():
+          src = create_java_enum ( v, package + type_package)
+      else:
+          src = create_java_type ( v, package + type_package)
+      save_file ( path + os.sep + pp, class_name, src )
+
+  class_name = table.getClassName()
+  src = create_java_type ( table, package + type_package)
   save_file( path + os.sep + pp, class_name, src )
 
   pp = get_package_path(package + iface_package)

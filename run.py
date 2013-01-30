@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import os
+import sys
 import argparse
 import psycopg2
 
@@ -10,30 +11,104 @@ import psycopg2
 import psycopg2.extras
 
 connection_string = ""
+connection = None
 
 def setConnectionString(conn_string):
     global connection_string
     connection_string = conn_string
 
 def getConnection():
+    global connection
+    if connection is not None:
+        return connection
     conn = psycopg2.connect(connection_string)
     conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
     cur = conn.cursor()
     cur.execute("SET work_mem TO '64MB';")
     cur.close()
+    connection = conn
     return conn
 
-def closeConnection(c):
-    c.close()
+def closeConnection():
+    global connection
+    if connection is not None:
+        connection.close()
 
 def getAssociationsForTable(schema,table):
     conn = getConnection()
     cursor = conn.cursor()
 
+def getFieldsForQuery(query):
+    conn = getConnection();
+    cursor = conn.cursor()
+    cursor.execute(query)
+    l = []
+    for r in cursor:
+        f = Field (r[0], r[1], maxLength=r[2], isPk=r[5], isNullable=(r[4]!='no'))
+
+        if r[3] is not None and r[3][0:7] == 'nextval':
+            f.set_is_serial ( True )
+
+        if f.type == 'USER-DEFINED':
+            f.type = r[6]
+            f.schema = r[7]
+            f.isComplex = True
+        l.append( f )
+    cursor.close()
+    return l
+
+def getComplexType(schema, name):
+    conn = getConnection()
+    cur = conn.cursor()
+    cur.execute("""select t.oid, t.typcategory
+                  from pg_type t, pg_namespace n
+                 where t.typnamespace = n.oid
+                   and t.typname = '""" + name + """'
+                   and n.nspname = '""" + schema + "'")
+    t = None
+    for c in cur:
+        t = c
+    cur.close()
+    if t is None:
+        print "Unknown type: " + schema + '.' + name
+        sys.exit()
+    cur = conn.cursor()
+    if t[1] == 'E':
+        cur.execute("""select enumlabel
+                         from pg_enum
+                        where enumtypid = """ + str(t[0]) + """
+                        order by enumsortorder""")
+        values = []
+        for c in cur:
+            values.append(c[0])
+        return Enum(schema, name, values)
+    elif t[1] == 'C':
+        return getFieldsForQuery("""select 'dm_' || attribute_name, data_type,character_maximum_length,
+                                            attribute_default, lower(is_nullable),
+                                            attribute_udt_name, attribute_udt_schema
+                                       from information_schema.attributes
+                                      where udt_schema = '""" + schema + """'
+                                        and udt_name='""" + name + """'
+                                   order by ordinal_position""")
+    else:
+        print "Unknown type for: " + schema + '.' + name
+        print t
+        sys.exit()
+
+def getComplexTypes(fields, complex = {}):
+    for f in fields:
+        key = f.schema + '.' + f.type
+        if f.isComplex and not key in complex:
+            c = getComplexType(f.schema, f.type)
+            if isinstance(c, Enum):
+                complex[key] = c
+            else:
+                complex[key] = Table(f.schema, f.type, c)
+                getComplexTypes(c, complex)
+    return complex
+
 def getFieldsForTable(schema,table):
-  conn = getConnection();
-  cursor = conn.cursor()
-  cursor.execute("""select column_name, data_type, character_maximum_length, column_default, lower(is_nullable),
+  return getFieldsForQuery("""select column_name, data_type, character_maximum_length, column_default, lower(is_nullable),
                            (select column_name in ( select column_name
                                                       from information_schema.key_column_usage kcu,
                                                            information_schema.table_constraints tc
@@ -41,28 +116,12 @@ def getFieldsForTable(schema,table):
                                                        and tc.table_schema = c.table_schema
                                                        and kcu.constraint_name = tc.constraint_name
                                                        and tc.constraint_type = 'PRIMARY KEY' ) ) as is_primary_part,
-                           udt_name
+                           udt_name, udt_schema
                       from information_schema.columns c
                      where table_name = '"""+table+"""'
                        and table_schema = '"""+schema+"""'
-                     order by ordinal_position""")
-
-  l = []
-  for r in cursor:
-    f = Field (r[0], r[1], maxLength=r[2], isPk=r[5], isNullable=(r[4]!='no'))
-
-    if r[3] is not None and r[3][0:7] == 'nextval':
-      f.set_is_serial ( True )
-
-    if f.type == 'USER-DEFINED':
-        f.type = r[6]
-    l.append( f )
-
-  cursor.close()
-  closeConnection(conn)
-
-  return l
-
+                  order by ordinal_position""")
+  
 def getUniqueIndexesForTable(schema, table):
     conn = getConnection()
     cursor = conn.cursor()
@@ -90,6 +149,7 @@ class Table ( object ):
         self.associations = []
         self.children = []
         self.indexes = []
+        self.complexTypes = {}
 
     def addField(self, f):
         self.fields.append(f)
@@ -114,6 +174,12 @@ class Table ( object ):
 
     def setIndexes(self, v):
         self.indexes = v
+
+    def setComplexTypes(self, v):
+        self.complexTypes = v
+
+    def isEnum(self):
+        return False
 
 class Association ( object ):
     def __init__(self, tableFrom, tableTo , colMap , doFollow = False):
@@ -148,6 +214,8 @@ class Field(object):
         self.isComplex = isComplex
         self.isSerial = isSerial
         self.isNullable = isNullable
+        self.schema = ''
+        self.complexStruct = []
 
     def set_is_serial(self,v):
       self.isSerial = v
@@ -166,6 +234,12 @@ class Enum(object):
         self.name = name
         self.schema = schema
         self.values = values
+
+    def getClassName(self):
+        return java.camel_case(self.name)
+
+    def isEnum(self):
+        return True
 
 def scaffold( table, package, path, opg ):
   java.generate_code( table, package, path )
@@ -211,10 +285,13 @@ def main():
   else:
     setConnectionString( 'host='+args.host+' user='+args.user+' port='+ str(args.port) +' dbname=' + args.database )
     fields = getFieldsForTable(args.schema, args.table)
+    uniqIndexes = getUniqueIndexesForTable(args.schema, args.table)
+    complexTypes = getComplexTypes(fields)
     t = Table ( args.schema, args.table, fields)
-    i = getUniqueIndexesForTable(args.schema, args.table)
-    t.setIndexes(i)
+    t.setIndexes(uniqIndexes)
+    t.setComplexTypes(complexTypes)
     scaffold ( t, args.package, args.path, args.opg )
+    closeConnection()
 
 if __name__ == "__main__":
     main()
