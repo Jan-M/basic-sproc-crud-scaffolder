@@ -2,7 +2,7 @@ CREATE OR REPLACE FUNCTION {{sprocName}}_create(p_in {{returnType}}) RETURNS SET
 $$
 DECLARE
 BEGIN
-  INSERT INTO {{schema}}.{{tableName}} (
+  RETURN QUERY INSERT INTO {{schema}}.{{tableName}} (
 {{columns}}
   )
   SELECT
