@@ -1,13 +1,14 @@
 CREATE OR REPLACE FUNCTION {{sprocName}}_create(p_in {{returnType}}) RETURNS SETOF {{returnType}} AS
 $$
-DECLARE 
-  RETURN QUERY INSERT INTO {{schema}}.{{tableName}} (
+DECLARE
+BEGIN
+  INSERT INTO {{schema}}.{{tableName}} (
 {{columns}}
   )
   SELECT
 {{ insertValues }}
   RETURNING
-{{ returnColumns }}
+{{ returnColumns }};
 END;
 $$ LANGUAGE 'plpgsql' SECURITY DEFINER;
 
