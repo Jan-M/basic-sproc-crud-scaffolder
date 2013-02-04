@@ -106,7 +106,7 @@ def create_java_type ( table, package ):
 def get_signatures_for_table ( table ):
     signatures = []
     
-    signatures.append ( ( table.getClassName() , "insert", table.getClassName() ) )
+    signatures.append ( ( table.getClassName() , "create", table.getClassName() ) )
     signatures.append ( ( table.getClassName() , "delete", table.getClassName() ) )
     signatures.append ( ( table.getClassName() , "update", table.getClassName() ) )
 
