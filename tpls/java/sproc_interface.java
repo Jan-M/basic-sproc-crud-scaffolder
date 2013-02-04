@@ -2,7 +2,7 @@
 import de.zalando.sprocwrapper.SProcParam;
 import de.zalando.sprocwrapper.SProcService;
 {{ importList }}
-@SProcService(prefix = "{{ prefix }}")
+@SProcService(namespace = "{{ prefix }}")
 public interface {{ interfaceName }} {
 {{ sprocList }}
 }
