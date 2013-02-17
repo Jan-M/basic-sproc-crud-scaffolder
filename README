@@ -1,5 +1,0 @@
-Create for hardcoded table meta data:
-./run.py
-
-Create for particular table:
-./run.py --host= --port=5432 --database= --user= --table= --schema=
