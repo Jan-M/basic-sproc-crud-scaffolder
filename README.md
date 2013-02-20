@@ -6,7 +6,7 @@ The basic-sproc-crud-scaffolder is a **command line code generator** and the per
 Installation
 ------------
 
-Installation is very straightforward, simply clone the repository directly from GitHub to a directly of your choice:
+Installation is very straightforward. Simply clone the repository directly from GitHub to a directory of your choice:
 
 ```bash
 $ git clone git://github.com/zalando/java-sproc-wrapper.git
