@@ -199,7 +199,7 @@ def create_sproc_service_implementation(table, package):
 
     return t.render(interfaceName=table.getClassName() + service_sfx,
                     functionImplementations="\n\n".join(sproc_list),
-                    datasourceProvider='SingleDatasourceProvider',
+                    datasourceProvider='SingleDataSourceProvider',
                     importList=import_list,
                     package=package)
 
