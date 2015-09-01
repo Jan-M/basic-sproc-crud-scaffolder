@@ -14,7 +14,7 @@ def getSProcName(schema, table):
 
 
 def getTypeName(table):
-    return table.name
+    return "t_" + table.name
 
 
 def getFieldNameForTable(table):
