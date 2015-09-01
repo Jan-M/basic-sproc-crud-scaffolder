@@ -209,7 +209,7 @@ class Association(object):
 
 pg2javaMap = {'text': 'String', 'integer': 'Integer', 'bigint': 'Long', 'timestamp without time zone': 'Date',
               'timestamp with time zone': 'Date', 'character varying': 'String', 'smallint': 'Integer',
-              'character': 'String', 'boolean': 'Boolean'}
+              'character': 'String', 'boolean': 'Boolean', 'uuid': 'UUID'}
 pg2javaMapNotNull = {'text': 'String', 'integer': 'int', 'bigint': 'long', 'timestamp without time zone': 'Date',
                      'timestamp with time zone': 'Date', 'character varying': 'String', 'smallint': 'int',
                      'character': 'String', 'boolean': 'boolean'}
