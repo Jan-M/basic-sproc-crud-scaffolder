@@ -8,7 +8,7 @@ public class {{ interfaceName }}Impl
     implements {{ interfaceName }} {
 
     @Autowired
-    public {{ interfaceName }}Impl(final {{ datasourceProvider }} ps) {
+    public {{ interfaceName }}Impl(@Qualifier("sProcDataSourceProvider") final {{ datasourceProvider }} ps) {
         super(ps, {{ interfaceName }}.class);
     }
 

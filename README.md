@@ -9,7 +9,7 @@ Installation
 Installation is very straightforward. Simply clone the repository directly from GitHub to a directory of your choice:
 
 ```bash
-$ git clone git://github.com/zalando/java-sproc-wrapper.git
+$ git clone git://github.com/zalando/basic-sproc-crud-scaffolder.git
 ```
 
 Usage

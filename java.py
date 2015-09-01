@@ -15,16 +15,25 @@ def camel_back(s):
 
 
 def getJavaFieldName(colName):
-    return camel_back(colName[colName.index('_'):])
+    try:
+        return camel_back(colName[colName.index('_'):])
+    except ValueError:
+        return camel_back(colName)
 
 
 def getJavaMethodName(colName):
-    return camel_case(colName[colName.index('_'):])
+    try:
+        return camel_case(colName[colName.index('_'):])
+    except ValueError:
+        return camel_case(colName)
 
 
 def getJavaType(field):
     return field.get_java_type()
-
+    
+def getTypeName(table):
+    return "t_" + table.name
+        
 
 def create_java_getter(fieldName, fieldType, methodName):
     return """    public """ + fieldType + """ get""" + methodName + """() {
@@ -67,7 +76,8 @@ def create_java_type(table, package):
     cols = []
     funcs = []
     fieldAnn = "    @DatabaseField\n"
-    imports = {'com.typemapper.annotations.DatabaseField': 1}
+    imports = {'de.zalando.typemapper.annotations.DatabaseField': 1,
+		'de.zalando.typemapper.annotations.DatabaseType': 2}
 
     for f in table.fields:
         fieldName = getJavaFieldName(f.name)
@@ -105,7 +115,8 @@ def create_java_type(table, package):
     source = "package " + package + ";\n"
     for k, v in imports.iteritems():
         source += "\nimport " + k + ";"
-    source += "\n\nclass " + table.getClassName() + " {\n"
+        
+    source += "\n\n" + "@DatabaseType(name = " + getTypeName(table)  +", inheritance = true)"  + "\nclass " + table.getClassName() + " {\n"
 
     source += "\n".join(cols)
     source += "\n"
@@ -188,7 +199,7 @@ def create_sproc_service_implementation(table, package):
 
     return t.render(interfaceName=table.getClassName() + service_sfx,
                     functionImplementations="\n\n".join(sproc_list),
-                    datasourceProvider='DatasourceProvider',
+                    datasourceProvider='SingleDatasourceProvider',
                     importList=import_list,
                     package=package)
 
