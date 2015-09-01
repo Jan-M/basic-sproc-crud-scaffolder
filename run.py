@@ -212,7 +212,7 @@ pg2javaMap = {'text': 'String', 'integer': 'Integer', 'bigint': 'Long', 'timesta
               'character': 'String', 'boolean': 'Boolean', 'uuid': 'UUID'}
 pg2javaMapNotNull = {'text': 'String', 'integer': 'int', 'bigint': 'long', 'timestamp without time zone': 'Date',
                      'timestamp with time zone': 'Date', 'character varying': 'String', 'smallint': 'int',
-                     'character': 'String', 'boolean': 'boolean'}
+                     'character': 'String', 'boolean': 'boolean', 'uuid': 'UUID'}
 
 
 class Field(object):
