@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 import os
 import sys
 import argparse
@@ -7,15 +8,14 @@ import psycopg2
 import plpgsql
 import java
 
-import psycopg2
-import psycopg2.extras
-
 connection_string = ""
 connection = None
+
 
 def setConnectionString(conn_string):
     global connection_string
     connection_string = conn_string
+
 
 def getConnection():
     global connection
@@ -29,33 +29,32 @@ def getConnection():
     connection = conn
     return conn
 
+
 def closeConnection():
     global connection
     if connection is not None:
         connection.close()
 
-def getAssociationsForTable(schema,table):
-    conn = getConnection()
-    cursor = conn.cursor()
 
 def getFieldsForQuery(query):
-    conn = getConnection();
+    conn = getConnection()
     cursor = conn.cursor()
     cursor.execute(query)
     l = []
     for r in cursor:
-        f = Field (r[0], r[1], maxLength=r[2], isPk=r[5], isNullable=(r[4]!='no'))
+        f = Field(r[0], r[1], maxLength=r[2], isPk=r[5], isNullable=(r[4] != 'no'))
 
         if r[3] is not None and r[3][0:7] == 'nextval':
-            f.set_is_serial ( True )
+            f.set_is_serial(True)
 
         if f.type == 'USER-DEFINED':
             f.type = r[6]
             f.schema = r[7]
             f.isComplex = True
-        l.append( f )
+        l.append(f)
     cursor.close()
     return l
+
 
 def getComplexType(schema, name):
     conn = getConnection()
@@ -95,7 +94,8 @@ def getComplexType(schema, name):
         print t
         sys.exit()
 
-def getComplexTypes(fields, complex = {}):
+
+def getComplexTypes(fields, complex={}):
     for f in fields:
         key = f.schema + '.' + f.type
         if f.isComplex and not key in complex:
@@ -107,8 +107,9 @@ def getComplexTypes(fields, complex = {}):
                 getComplexTypes(c, complex)
     return complex
 
-def getFieldsForTable(schema,table):
-  return getFieldsForQuery("""select column_name, data_type, character_maximum_length, column_default, lower(is_nullable),
+
+def getFieldsForTable(schema, table):
+    return getFieldsForQuery("""select column_name, data_type, character_maximum_length, column_default, lower(is_nullable),
                            (select column_name in ( select column_name
                                                       from information_schema.key_column_usage kcu,
                                                            information_schema.table_constraints tc
@@ -118,10 +119,11 @@ def getFieldsForTable(schema,table):
                                                        and tc.constraint_type = 'PRIMARY KEY' ) ) as is_primary_part,
                            udt_name, udt_schema
                       from information_schema.columns c
-                     where table_name = '"""+table+"""'
-                       and table_schema = '"""+schema+"""'
+                     where table_name = '""" + table + """'
+                       and table_schema = '""" + schema + """'
                   order by ordinal_position""")
-  
+
+
 def getUniqueIndexesForTable(schema, table):
     conn = getConnection()
     cursor = conn.cursor()
@@ -137,12 +139,15 @@ def getUniqueIndexesForTable(schema, table):
 
     ret = []
     for r in cursor:
-        if r[0] is not None and r[0][0] != '0' and r[0][0] != '-': 
+        if r[0] is not None and r[0][0] != '0' and r[0][0] != '-':
             ret.append(r[0].split(' '))
     return ret
 
-class Table ( object ):
-    def __init__(self,schema,name,fields=[]):
+
+class Table(object):
+    def __init__(self, schema, name, fields=None):
+        if not fields:
+            fields = []
         self.name = name
         self.schema = schema
         self.fields = fields
@@ -154,10 +159,10 @@ class Table ( object ):
     def addField(self, f):
         self.fields.append(f)
 
-    def addAssociation (self, a ):
+    def addAssociation(self, a):
         self.associations.append(a)
 
-    def addChild (self, c ):
+    def addChild(self, c):
         self.children.append(c)
 
     def getName(self):
@@ -181,11 +186,12 @@ class Table ( object ):
     def isEnum(self):
         return False
 
-class Association ( object ):
-    def __init__(self, tableFrom, tableTo , colMap , doFollow = False):
+
+class Association(object):
+    def __init__(self, tableFrom, tableTo, colMap, doFollow=False):
         self.tableFrom = tableFrom
         self.tableTo = tableTo
-        self.colMap = colMap        
+        self.colMap = colMap
         self.doFollow = doFollow
 
     def getSourceTuple(self):
@@ -200,11 +206,18 @@ class Association ( object ):
             l.append(self.colMap[k])
         return ",".join(l)
 
-pg2javaMap        = { 'text': 'String', 'integer': 'Integer', 'bigint' : 'Long', 'timestamp without time zone' : 'Date', 'timestamp with time zone': 'Date', 'character varying' : 'String', 'smallint' : 'Integer' , 'character' : 'String', 'boolean' : 'Boolean' }
-pg2javaMapNotNull = { 'text': 'String', 'integer': 'int',     'bigint' : 'long', 'timestamp without time zone' : 'Date', 'timestamp with time zone': 'Date', 'character varying' : 'String', 'smallint' : 'int',      'character' : 'String', 'boolean' : 'boolean' }
+
+pg2javaMap = {'text': 'String', 'integer': 'Integer', 'bigint': 'Long', 'timestamp without time zone': 'Date',
+              'timestamp with time zone': 'Date', 'character varying': 'String', 'smallint': 'Integer',
+              'character': 'String', 'boolean': 'Boolean', 'uuid': 'UUID'}
+pg2javaMapNotNull = {'text': 'String', 'integer': 'int', 'bigint': 'long', 'timestamp without time zone': 'Date',
+                     'timestamp with time zone': 'Date', 'character varying': 'String', 'smallint': 'int',
+                     'character': 'String', 'boolean': 'boolean', 'uuid': 'UUID'}
+
 
 class Field(object):
-    def __init__(self, name, type, maxLength = -1, isSerial = False, isPk = False, isEnum = False, isArray = False, isComplex = False, isNullable=True):
+    def __init__(self, name, type, maxLength=-1, isSerial=False, isPk=False, isEnum=False, isArray=False,
+                 isComplex=False, isNullable=True):
         self.isPk = isPk
         self.type = type
         self.maxLength = maxLength
@@ -217,20 +230,22 @@ class Field(object):
         self.schema = ''
         self.complexStruct = []
 
-    def set_is_serial(self,v):
-      self.isSerial = v
+    def set_is_serial(self, v):
+        self.isSerial = v
 
     def get_java_type(self):
-      if not self.type in pg2javaMap and not self.type in pg2javaMapNotNull:
-        return java.camel_case(self.type)
-      elif self.isNullable:
-        return pg2javaMap[self.type]
-      else:
-        return pg2javaMapNotNull[self.type]
+        if not self.type in pg2javaMap and not self.type in pg2javaMapNotNull:
+            return java.camel_case(self.type)
+        elif self.isNullable:
+            return pg2javaMap[self.type]
+        else:
+            return pg2javaMapNotNull[self.type]
 
 
 class Enum(object):
-    def __init__(self, schema, name, values = []):
+    def __init__(self, schema, name, values=None):
+        if not values:
+            values = []
         self.name = name
         self.schema = schema
         self.values = values
@@ -241,57 +256,65 @@ class Enum(object):
     def isEnum(self):
         return True
 
-def scaffold( table, package, path, opg ):
-  java.generate_code( table, package, path )
-  
-  path += os.sep + 'database'
-  if opg != '':
-    path += os.sep + opg
-  plpgsql.generate_code( table, path )
 
-def create_for_table(schema,name,package):
-  parentT = Table('public','parent',[Field('p_id','integer',isPk=True,isSerial=True), Field('p_name','text'), Field('p_first_name','text'), Field('p_parent_data_id','integer') ])
-  parentDataT = Table('public','parent_data', [Field('pd_id','integer',isSerial=True,isPk=True),Field('pd_street','text'),Field('pd_city','text')])
+def scaffold(table, package, path, opg):
+    java.generate_code(table, package, path)
 
-  association = Association(parentT,parentDataT,{'p_parent_data_id':'pd_id'}, True)
-  parentT.addAssociation( association )
+    path += os.sep + 'database'
+    if opg != '':
+        path += os.sep + opg
+    plpgsql.generate_code(table, path)
 
-  if package != '':
-    package += '.'
 
-  print plpgsql.create_pg_type ( parentT )
-  print plpgsql.create_pg_type ( parentDataT )
-  print java.create_java_type ( parentT, package )
-  print java.create_java_type ( parentDataT, package )
-  print plpgsql.create_sprocs( parentT )
-  print java.create_sproc_service_interface( parentT, package )
-  print java.create_sproc_service_implementation( parentT, package )
+def create_for_table(package):
+    parentT = Table('public', 'parent', [Field('p_id', 'integer', isPk=True, isSerial=True), Field('p_name', 'text'),
+                                         Field('p_first_name', 'text'), Field('p_parent_data_id', 'integer')])
+    parentDataT = Table('public', 'parent_data',
+                        [Field('pd_id', 'integer', isSerial=True, isPk=True), Field('pd_street', 'text'),
+                         Field('pd_city', 'text')])
+
+    association = Association(parentT, parentDataT, {'p_parent_data_id': 'pd_id'}, True)
+    parentT.addAssociation(association)
+
+    if package != '':
+        package += '.'
+
+    print plpgsql.create_pg_type(parentT)
+    print plpgsql.create_pg_type(parentDataT)
+    print java.create_java_type(parentT, package)
+    print java.create_java_type(parentDataT, package)
+    print plpgsql.create_sprocs(parentT)
+    print java.create_sproc_service_interface(parentT, package)
+    print java.create_sproc_service_implementation(parentT, package)
+
 
 def main():
-  argp = argparse.ArgumentParser(description='Scaffolder')
-  argp.add_argument('-H', '--host', dest='host', default='localhost')
-  argp.add_argument('-U', '--user', dest='user')
-  argp.add_argument('-D', '--database', dest='database')
-  argp.add_argument('-T', '--table', dest='table')
-  argp.add_argument('-S', '--schema', dest='schema')
-  argp.add_argument('-P', '--port', dest='port',default=5432)
-  argp.add_argument('-o', '--output-directory', dest='path', default='output')
-  argp.add_argument('-p', '--package', dest='package', default='')
-  argp.add_argument('-g', '--opg', dest='opg', default='')
-  args = argp.parse_args()
+    argp = argparse.ArgumentParser(description='Scaffolder')
+    argp.add_argument('-H', '--host', dest='host', default='localhost')
+    argp.add_argument('-U', '--user', dest='user')
+    argp.add_argument('-D', '--database', dest='database')
+    argp.add_argument('-T', '--table', dest='table')
+    argp.add_argument('-S', '--schema', dest='schema')
+    argp.add_argument('-P', '--port', dest='port', default=5432)
+    argp.add_argument('-o', '--output-directory', dest='path', default='output')
+    argp.add_argument('-p', '--package', dest='package', default='')
+    argp.add_argument('-g', '--opg', dest='opg', default='')
+    args = argp.parse_args()
 
-  if args.table == None:
-    create_for_table('public','parent', args.package)
-  else:
-    setConnectionString( 'host='+args.host+' user='+args.user+' port='+ str(args.port) +' dbname=' + args.database )
-    fields = getFieldsForTable(args.schema, args.table)
-    uniqIndexes = getUniqueIndexesForTable(args.schema, args.table)
-    complexTypes = getComplexTypes(fields)
-    t = Table ( args.schema, args.table, fields)
-    t.setIndexes(uniqIndexes)
-    t.setComplexTypes(complexTypes)
-    scaffold ( t, args.package, args.path, args.opg )
-    closeConnection()
+    if args.table is None:
+        create_for_table(args.package)
+    else:
+        setConnectionString(
+            'host=' + args.host + ' user=' + args.user + ' port=' + str(args.port) + ' dbname=' + args.database)
+        fields = getFieldsForTable(args.schema, args.table)
+        uniqIndexes = getUniqueIndexesForTable(args.schema, args.table)
+        complexTypes = getComplexTypes(fields)
+        t = Table(args.schema, args.table, fields)
+        t.setIndexes(uniqIndexes)
+        t.setComplexTypes(complexTypes)
+        scaffold(t, args.package, args.path, args.opg)
+        closeConnection()
+
 
 if __name__ == "__main__":
     main()
